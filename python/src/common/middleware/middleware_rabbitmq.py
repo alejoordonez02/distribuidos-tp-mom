@@ -40,5 +40,19 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
 
 
 class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
-    def __init__(self, host, exchange_name, routing_keys):
+    def __init__(self, host: str, exchange_name: str, routing_keys: list[str]):
+        pass
+
+    def start_consuming(
+        self, on_message_callback: Callable[[bytes, Callable, Callable], None]
+    ) -> None:
+        pass
+
+    def stop_consuming(self) -> None:
+        pass
+
+    def send(self, message: bytes) -> None:
+        pass
+
+    def close(self) -> None:
         pass
