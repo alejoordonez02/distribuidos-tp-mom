@@ -1,8 +1,14 @@
 from typing import Callable
 
 from pika import BlockingConnection, ConnectionParameters
+from pika.exceptions import ConnectionClosed
 
-from .middleware import MessageMiddlewareExchange, MessageMiddlewareQueue
+from .middleware import (
+    MessageMiddlewareExchange,
+    MessageMiddlewareQueue,
+    MessageMiddlewareDisconnectedError,
+    MessageMiddlewareMessageError,
+)
 
 
 class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
@@ -21,16 +27,34 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
             )
 
         self.chan.basic_consume(queue=self.queue_name, on_message_callback=callback)
-        self.chan.start_consuming()
+        try:
+            self.chan.start_consuming()
+        except ConnectionClosed as e:
+            raise MessageMiddlewareDisconnectedError(str(e)) from e
+        except Exception as e:
+            raise MessageMiddlewareMessageError(str(e)) from e
 
     def stop_consuming(self) -> None:
-        self.chan.stop_consuming()
+        try:
+            self.chan.stop_consuming()
+        except ConnectionClosed as e:
+            raise MessageMiddlewareDisconnectedError(str(e)) from e
 
     def send(self, message: bytes) -> None:
-        self.chan.basic_publish(exchange="", routing_key=self.queue_name, body=message)
+        try:
+            self.chan.basic_publish(
+                exchange="", routing_key=self.queue_name, body=message
+            )
+        except ConnectionClosed as e:
+            raise MessageMiddlewareDisconnectedError(str(e)) from e
+        except Exception as e:
+            raise MessageMiddlewareMessageError(str(e)) from e
 
     def close(self) -> None:
-        self.conn.close()
+        try:
+            self.conn.close()
+        except Exception as e:
+            raise MessageMiddlewareMessageError(str(e)) from e
 
     def _ack(self, chan, method) -> None:
         chan.basic_ack(delivery_tag=method.delivery_tag)
@@ -64,19 +88,35 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             )
 
         self.chan.basic_consume(queue=self.queue_name, on_message_callback=callback)
-        self.chan.start_consuming()
+        try:
+            self.chan.start_consuming()
+        except ConnectionClosed as e:
+            raise MessageMiddlewareDisconnectedError(str(e)) from e
+        except Exception as e:
+            raise MessageMiddlewareMessageError(str(e)) from e
 
     def stop_consuming(self) -> None:
-        self.chan.stop_consuming()
+        try:
+            self.chan.stop_consuming()
+        except ConnectionClosed as e:
+            raise MessageMiddlewareDisconnectedError(str(e)) from e
 
     def send(self, message: bytes) -> None:
         for k in self.routing_keys:
-            self.chan.basic_publish(
-                exchange=self.exchange_name, routing_key=k, body=message
-            )
+            try:
+                self.chan.basic_publish(
+                    exchange=self.exchange_name, routing_key=k, body=message
+                )
+            except ConnectionClosed as e:
+                raise MessageMiddlewareDisconnectedError(str(e)) from e
+            except Exception as e:
+                raise MessageMiddlewareMessageError(str(e)) from e
 
     def close(self) -> None:
-        self.conn.close()
+        try:
+            self.conn.close()
+        except Exception as e:
+            raise MessageMiddlewareMessageError(str(e)) from e
 
     def _ack(self, chan, method) -> None:
         chan.basic_ack(delivery_tag=method.delivery_tag)
