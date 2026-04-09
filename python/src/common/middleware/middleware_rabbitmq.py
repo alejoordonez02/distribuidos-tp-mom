@@ -1,7 +1,7 @@
 from typing import Callable
 
 from pika import BlockingConnection, ConnectionParameters
-from pika.exceptions import ConnectionClosed
+from pika.exceptions import AMQPConnectionError
 
 from .middleware import (
     MessageMiddlewareExchange,
@@ -29,7 +29,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         self.chan.basic_consume(queue=self.queue_name, on_message_callback=callback)
         try:
             self.chan.start_consuming()
-        except ConnectionClosed as e:
+        except AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(str(e)) from e
         except Exception as e:
             raise MessageMiddlewareMessageError(str(e)) from e
@@ -37,7 +37,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
     def stop_consuming(self) -> None:
         try:
             self.chan.stop_consuming()
-        except ConnectionClosed as e:
+        except AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(str(e)) from e
 
     def send(self, message: bytes) -> None:
@@ -45,7 +45,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
             self.chan.basic_publish(
                 exchange="", routing_key=self.queue_name, body=message
             )
-        except ConnectionClosed as e:
+        except AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(str(e)) from e
         except Exception as e:
             raise MessageMiddlewareMessageError(str(e)) from e
@@ -90,7 +90,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
         self.chan.basic_consume(queue=self.queue_name, on_message_callback=callback)
         try:
             self.chan.start_consuming()
-        except ConnectionClosed as e:
+        except AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(str(e)) from e
         except Exception as e:
             raise MessageMiddlewareMessageError(str(e)) from e
@@ -98,7 +98,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     def stop_consuming(self) -> None:
         try:
             self.chan.stop_consuming()
-        except ConnectionClosed as e:
+        except AMQPConnectionError as e:
             raise MessageMiddlewareDisconnectedError(str(e)) from e
 
     def send(self, message: bytes) -> None:
@@ -107,7 +107,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
                 self.chan.basic_publish(
                     exchange=self.exchange_name, routing_key=k, body=message
                 )
-            except ConnectionClosed as e:
+            except AMQPConnectionError as e:
                 raise MessageMiddlewareDisconnectedError(str(e)) from e
             except Exception as e:
                 raise MessageMiddlewareMessageError(str(e)) from e
